@@ -9,13 +9,19 @@ class Post(models.Model):
     text = models.TextField()
     created_date = models.DateTimeField(default=timezone.now)
     published_date = models.DateTimeField(blank=True, null=True)
-
+    likes = models.IntegerField(default=0)
     def publish(self):
         self.published_date = timezone.now()
         self.save()
 
     def __str__(self):
         return self.title
+    
+    def approved_comments(self):
+        return self.comments.filter(approved_comment=True)
+    
+    def increase_likes(self):
+        self.likes = self.likes + 1
 
 class Comment(models.Model):
     post = models.ForeignKey('blog.Post', on_delete=models.CASCADE, related_name='comments')

@@ -5,18 +5,23 @@ from django.shortcuts import render,redirect, get_object_or_404
 from .forms import PostForm
 from django.contrib.auth.decorators import login_required
 from .forms import PostForm, CommentForm
-# from rest_framework import generics
-# from .serializers import PostSerializer
+from rest_framework import generics
+from .serializers import PostSerializer
+from  mysite import helpers
 
-# class PostList(generics.ListAPIView):
-#     queryset = Post.objects.all()
-#     serializer_class = PostSerializer
-# class PostDetail(generics.RetrieveAPIView):
-#     queryset = Post.objects.all()
-#     serializer_class = PostSerializer
+
+class PostList(generics.ListAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+
+class PostDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+
 @login_required
 def post_list(request):
-    posts = Post.objects.filter(published_date__lte=timezone.now()).order_by('published_date')
+    post_list = Post.objects.filter(published_date__lte=timezone.now()).order_by('published_date')
+    posts = helpers.pg_records(request, post_list, 5)
     return render(request, 'blog/post_list.html', {'posts': posts})
 
 @login_required
@@ -96,11 +101,17 @@ def comment_approve(request, pk):
     return redirect('post_detail', pk=comment.post.pk)
 
 @login_required
+def add_Likes(request, pk):
+    post = get_object_or_404(Post, pk=pk)
+    post.likes = post.likes + 1
+    post.save()
+    return redirect('post_detail', pk=post.pk)
+
+@login_required
 def comment_remove(request, pk):
     comment = get_object_or_404(Comment, pk=pk)
     comment.delete()
     return redirect('post_detail', pk=comment.post.pk)
 
-def approved_comments(self):
-    return self.comments.filter(approved_comment=True)
+
 
