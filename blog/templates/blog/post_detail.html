@@ -20,11 +20,18 @@
     </div>
 
     <hr>
-    <a class="btn btn-default" href="{% url 'add_comment_to_post' pk=post.pk %}"><span class="glyphicon glyphicon-comment"></span></a>	
+    <!--post.all_Likes.count() <a class="btn btn-default" href="{% url 'add_comment_to_post' pk=post.pk %}"><span class="glyphicon glyphicon-comment"></span></a>	 -->
     <a class="btn btn-default" href="{% url 'add_Likes' pk=post.pk %}"><span class="glyphicon glyphicon-heart-empty"></span></a>
-        {{post.likes}}
+        {{post.all_Likes.all.count}}
+
+    <h4>New comment</h4>
+    <form method="POST" action="{% url 'add_comment_to_post' pk=post.pk %}" >{% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="save btn btn-default">Send</button>
+    </form>
     {% for comment in post.comments.all %}
-    {% if user.is_authenticated or comment.approved_comment %}
+
+    {% if comment.is_parent and user.is_authenticated  %}
     <div class="comment">
         <div class="date">
             {{ comment.created_date }}
@@ -35,9 +42,40 @@
         </div>
         <strong>{{ comment.author }}</strong>
         <p>{{ comment.text|linebreaks }}</p>
+        <div class ="date">
+        {% if comment.children.count > 0 %}
+        
+        {{ comment.children.count }} Comments
+        
+        {% endif %}
+        |<a class="btn btn-default reply-btn" href="#"><i class="fas fa-reply"></i></a>
+        </div>
+        <div class="comment replies"> 
+        <div >
+        {% for reply in comment.replies.all %}
+            <hr>
+                <div class="date">  {{ reply.created_date }}</div>
+                <strong>{{ reply.author }} </strong>
+            <p>{{ reply.text }}</p>
+        {% endfor %}
+        </div>
+        <!-- <a class="btn btn-default" href=""><i class="fas fa-reply"></i></a> -->
+        
+        <br>
+        <form method="POST" action="{% url 'add_comment_to_post' pk=post.pk %}" >{% csrf_token %}
+            {{ form.as_p }}
+            <input type="hidden" name="parent_id" value="{{ comment.id }}">
+            <button type="submit" class="save btn btn-default">Send</button>
+        </form>
+        </div>	
+        <hr>
     </div>
+    
     {% endif %}
     {% empty %}
     <p>No comments here yet :(</p>
     {% endfor %}
+    
+    <!-- {% block commentform %}
+    {% endblock %} -->
 {% endblock %}

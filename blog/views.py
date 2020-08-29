@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.utils import timezone
-from .models import Post,Comment
+from .models import Post,Comment,Like
 from django.shortcuts import render,redirect, get_object_or_404
 from .forms import PostForm
 from django.contrib.auth.decorators import login_required
@@ -27,7 +27,9 @@ def post_list(request):
 @login_required
 def post_detail(request, pk):
     post = get_object_or_404(Post, pk=pk)
-    return render(request, 'blog/post_detail.html', {'post': post})
+
+    form = CommentForm()
+    return render(request, 'blog/post_detail.html', {'post': post, 'form': form})
 
 @login_required
 def post_new(request):
@@ -83,12 +85,24 @@ def post_remove(request, pk):
 @login_required
 def add_comment_to_post(request, pk):
     post = get_object_or_404(Post, pk=pk)
+    comments = post.comments.filter(parent__isnull=True)
     if request.method == "POST":
         form = CommentForm(request.POST)
         if form.is_valid():
-            comment = form.save(commit=False)
-            comment.post = post
-            comment.save()
+            parent_obj = None
+            try:
+                parent_id = int(request.POST.get('parent_id'))
+            except:
+                parent_id = None
+            if parent_id:
+                parent_obj = Comment.objects.get(id=parent_id)
+                if parent_obj:
+                    reply_comment = form.save(commit=False)
+                    reply_comment.parent = parent_obj
+            new_comment = form.save(commit=False)
+            new_comment.post = post
+            new_comment.author = request.user
+            new_comment.save()
             return redirect('post_detail', pk=post.pk)
     else:
         form = CommentForm()
@@ -102,10 +116,20 @@ def comment_approve(request, pk):
 
 @login_required
 def add_Likes(request, pk):
+    new_like, created = Like.objects.get_or_create(user=request.user, post_id=pk)
+    return redirect('post_detail', pk=new_like.post.pk)
+
+def post_liked(request, pk):
     post = get_object_or_404(Post, pk=pk)
-    post.likes = post.likes + 1
-    post.save()
+    user_likes_this = post.all_Likes.filter(user=request.user) and True or False
     return redirect('post_detail', pk=post.pk)
+
+# @login_required
+# def add_Likes(request, pk):
+#     post = get_object_or_404(Post, pk=pk)
+#     # post.likes = post.likes + 1
+#     # post.save()
+#     return redirect('post_detail', pk=post.pk)
 
 @login_required
 def comment_remove(request, pk):
@@ -115,3 +139,8 @@ def comment_remove(request, pk):
 
 
 
+@login_required
+def get_user_Posts(request):
+    post_list = Post.objects.filter(author=request.user).order_by('created_date')
+    posts = helpers.pg_records(request, post_list, 5)
+    return render(request, 'blog/post_list.html', {'posts': posts})
